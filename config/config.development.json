@@ -1,0 +1,23 @@
+{
+  "Mysql": {
+    "DriverName": "mysql",
+    "Host": "localhost",
+    "Port": 3306,
+    "User": "urlshortener",
+    "Password": "abcd1234",
+    "Database":  "urlshortener"
+  },
+
+  "Redis": {
+    "Host": "localhost",
+    "Port": 6379,
+    "Password": "",
+    "DB": 0
+  },
+
+  "UrlShortenerService": {
+    "SlugLength": 11,
+    "DomainName": "localhost:8080",
+    "DefaultExpireDays": 30
+  }
+}
