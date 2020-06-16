@@ -12,3 +12,5 @@ Functional requirements:
 Non-functional Requirements:
  * Integrate cache like Redis or Memcached for storing the data
  * Shortened links should not be guessable (not predictable)
+#### Demo web view:
+![Alt text](images/image.jpg)
