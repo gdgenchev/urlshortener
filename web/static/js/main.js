@@ -53,7 +53,7 @@ function generateShortUrl() {
                     '<div class="input-group">' +
                     '  <input type="url" value=\'' + data["short-url"] + '\' id="copy" class="form-control" readonly>' +
                     '  <div class="input-group-append">' +
-                    '    <button class="btn btn-outline-secondary copy" data-clipboard-target="#copy" type="button">Copy</button>' +
+                    '    <button class="btn btn-primary copy" data-clipboard-target="#copy" type="button">Copy</button>' +
                     '  </div>' +
                     '</div>'
                 )
