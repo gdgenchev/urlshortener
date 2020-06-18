@@ -1,5 +1,5 @@
 // Package urldata provides the UrlData type.
-package urldata
+package model
 
 import (
 	"encoding/json"

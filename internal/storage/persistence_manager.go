@@ -2,8 +2,8 @@
 package storage
 
 import (
-	"github.com/gdgenchev/urlshortener/internal/common/config"
-	"github.com/gdgenchev/urlshortener/internal/common/urldata"
+	"github.com/gdgenchev/urlshortener/internal/model"
+	"github.com/gdgenchev/urlshortener/internal/util"
 )
 
 // PersistenceManager manages a long term database persistence and a short term
@@ -13,7 +13,7 @@ type PersistenceManager struct {
 	cachePersistence    CachePersistence
 }
 
-func NewPersistenceManager(configuration config.Configuration) *PersistenceManager {
+func NewPersistenceManager(configuration util.Configuration) *PersistenceManager {
 	persistenceManager := new(PersistenceManager)
 
 	mysqlPersistence := NewMysqlPersistence(configuration)
@@ -25,8 +25,8 @@ func NewPersistenceManager(configuration config.Configuration) *PersistenceManag
 	return persistenceManager
 }
 
-// SaveUrlData persists the url data.
-func (persistenceManager *PersistenceManager) SaveUrlData(urlData urldata.UrlData) bool {
+// SaveUrlData persists the url data and returns false if the data already exists.
+func (persistenceManager *PersistenceManager) SaveUrlData(urlData model.UrlData) bool {
 	// If the data is present in the cache, we are sure that this is a duplicate
 	if persistenceManager.cachePersistence.Exists(urlData.ShortSlug) {
 		return false
@@ -34,7 +34,7 @@ func (persistenceManager *PersistenceManager) SaveUrlData(urlData urldata.UrlDat
 
 	// If the data has not been found in the cache, there is a chance that it is in the database
 	// (if the cache memory limit has been reached and its eviction policy has been applied)
-	if alreadyExists := persistenceManager.databasePersistence.SaveUrlData(urlData); alreadyExists {
+	if ok := persistenceManager.databasePersistence.SaveUrlData(urlData); !ok {
 		return false
 	}
 

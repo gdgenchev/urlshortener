@@ -3,17 +3,16 @@ package storage
 
 import (
 	"fmt"
-	"github.com/gdgenchev/urlshortener/internal/common/config"
-	"github.com/gdgenchev/urlshortener/internal/common/urldata"
-	my "github.com/go-mysql/errors"
+	"github.com/gdgenchev/urlshortener/internal/model"
+	"github.com/gdgenchev/urlshortener/internal/util"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 )
 
-// DatabasePersistence provides a common interface for the long term url data persistence.
+// DatabasePersistence provides a util interface for the long term url data persistence.
 type DatabasePersistence interface {
-	SaveUrlData(urlData urldata.UrlData) bool
-	GetUrlData(shortUrl string) (urldata.UrlData, bool)
+	SaveUrlData(urlData model.UrlData) bool
+	GetUrlData(shortUrl string) (model.UrlData, bool)
 	Exists(shortSlug string) bool
 	Close()
 }
@@ -23,7 +22,7 @@ type MysqlPersistence struct {
 	db *gorm.DB
 }
 
-func NewMysqlPersistence(configuration config.Configuration) *MysqlPersistence {
+func NewMysqlPersistence(configuration util.Configuration) *MysqlPersistence {
 	connectionString := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?loc=Local&parseTime=True", configuration.Mysql.User,
 		configuration.Mysql.Password, configuration.Mysql.Host, configuration.Mysql.Port, configuration.Mysql.Database)
 	db, err := gorm.Open(configuration.Mysql.DriverName, connectionString)
@@ -40,24 +39,32 @@ func NewMysqlPersistence(configuration config.Configuration) *MysqlPersistence {
 }
 
 func (mysqlPersistence *MysqlPersistence) init() {
-	mysqlPersistence.db.AutoMigrate(urldata.UrlData{})
+	mysqlPersistence.db.AutoMigrate(model.UrlData{})
 	mysqlPersistence.db.Exec("CREATE EVENT IF NOT EXISTS expires_check ON SCHEDULE EVERY 1 DAY DO DELETE FROM url_data WHERE expires <= NOW()")
 }
 
 // SaveUrlData saves the url data in the database.
 // Returns true if successful and false if the url short slug already exists
-func (mysqlPersistence *MysqlPersistence) SaveUrlData(urlData urldata.UrlData) bool {
+func (mysqlPersistence *MysqlPersistence) SaveUrlData(urlData model.UrlData) bool {
 	//Workaround for an expired url, but not yet deleted by the mysql event
 	mysqlPersistence.deleteUrlDataIfExpired(urlData.ShortSlug)
-	err := mysqlPersistence.db.Create(&urlData).Error
 
-	return err == my.ErrDupeKey
+	if mysqlPersistence.Exists(urlData.ShortSlug) {
+		return false
+	}
+
+	err := mysqlPersistence.db.Create(&urlData).Error
+	if err != nil {
+		panic(err)
+	}
+
+	return true
 }
 
 // GetRealUrlData retrieves the url data given a short slug.
 // It checks only valid urls(which have not expired).
-func (mysqlPersistence *MysqlPersistence) GetUrlData(shortSlug string) (urldata.UrlData, bool) {
-	var urlData urldata.UrlData
+func (mysqlPersistence *MysqlPersistence) GetUrlData(shortSlug string) (model.UrlData, bool) {
+	var urlData model.UrlData
 	found := !mysqlPersistence.db.
 		Where("short_slug = ?", shortSlug).
 		Where("expires > NOW()").
@@ -83,7 +90,7 @@ func (mysqlPersistence *MysqlPersistence) Close() {
 }
 
 func (mysqlPersistence *MysqlPersistence) deleteUrlDataIfExpired(shortSlug string) {
-	err := mysqlPersistence.db.Where("short_slug = ?", shortSlug).Where("expires < NOW()").Delete(urldata.UrlData{}).Error
+	err := mysqlPersistence.db.Where("short_slug = ?", shortSlug).Where("expires < NOW()").Delete(model.UrlData{}).Error
 	if err != nil {
 		panic(err)
 	}

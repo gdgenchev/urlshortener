@@ -4,9 +4,9 @@ package urlshortener_service
 import (
 	"encoding/json"
 	"errors"
-	"github.com/gdgenchev/urlshortener/internal/common/config"
-	"github.com/gdgenchev/urlshortener/internal/common/urldata"
+	"github.com/gdgenchev/urlshortener/internal/model"
 	"github.com/gdgenchev/urlshortener/internal/storage"
+	"github.com/gdgenchev/urlshortener/internal/util"
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"log"
@@ -17,7 +17,7 @@ import (
 )
 
 // response represents a json response.
-type response struct {
+type Response struct {
 	ShortUrl     string `json:"short-url"`
 	ErrorMessage string `json:"error-message"`
 }
@@ -59,7 +59,7 @@ type UrlShortenerService struct {
 	mutex              sync.Mutex
 }
 
-func NewUrlShortenerService(config config.Configuration) *UrlShortenerService {
+func NewUrlShortenerService(config util.Configuration) *UrlShortenerService {
 	urlShortenerService := new(UrlShortenerService)
 
 	urlShortenerService.domainName = config.UrlShortenerService.DomainName
@@ -106,7 +106,7 @@ func (urlShortenerService *UrlShortenerService) HandleGenerateShortSlug(writer h
 	}
 
 	urlShortenerService.sendResponse(writer, http.StatusCreated,
-		response{urlShortenerService.domainName + "/" + urlData.ShortSlug, ""})
+		Response{urlShortenerService.domainName + "/" + urlData.ShortSlug, ""})
 }
 
 // HandleRedirectToRealUrl is the REST handler for an incoming GET request for redirecting to the real url.
@@ -129,8 +129,8 @@ func (urlShortenerService *UrlShortenerService) ClosePersistenceManager() {
 }
 
 // Private helper methods
-func (urlShortenerService *UrlShortenerService) getUrlDataFromRequest(request *http.Request) (urldata.UrlData, error) {
-	var urlData urldata.UrlData
+func (urlShortenerService *UrlShortenerService) getUrlDataFromRequest(request *http.Request) (model.UrlData, error) {
+	var urlData model.UrlData
 
 	reqBody, err := ioutil.ReadAll(request.Body)
 	if err != nil {
@@ -141,6 +141,11 @@ func (urlShortenerService *UrlShortenerService) getUrlDataFromRequest(request *h
 	err = json.Unmarshal(reqBody, &urlData)
 	if err != nil {
 		log.Printf("Error in getUrlDataFromRequest() - json.Unmarshal(): %v\n", err)
+		return urlData, errors.New("internal server error")
+	}
+
+	if urlData.RealUrl == "" {
+		log.Printf("Error in getUrlDataFromRequest() - empty real url field.\n")
 		return urlData, errors.New("internal server error")
 	}
 
@@ -157,13 +162,13 @@ func (urlShortenerService *UrlShortenerService) generateUniqueShortSlug() string
 }
 
 func (urlShortenerService *UrlShortenerService) sendErrorResponse(writer http.ResponseWriter, status int, errorMessage string) {
-	urlShortenerService.sendResponse(writer, status, response{"", errorMessage})
+	urlShortenerService.sendResponse(writer, status, Response{"", errorMessage})
 }
 
-func (urlShortenerService *UrlShortenerService) sendResponse(writer http.ResponseWriter, status int, response response) {
+func (urlShortenerService *UrlShortenerService) sendResponse(writer http.ResponseWriter, status int, response Response) {
 	writer.WriteHeader(status)
 	err := json.NewEncoder(writer).Encode(response)
 	if err != nil {
-		log.Println("Error while encoding the response in json format: %v", err)
+		log.Printf("Error while encoding the response in json format: %v.\n", err)
 	}
 }
