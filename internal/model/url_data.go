@@ -8,9 +8,16 @@ import (
 	"time"
 )
 
-// CustomTime is used to handle json time in format dd/mm/yyyy hh:mm
+// CustomTime denotes the expiration time in format dd/mm/yyyy hh:mm
 type CustomTime struct {
 	time.Time `gorm:"column:expires; type:datetime"`
+}
+
+// UrlData denotes the url data that is sent by the user.
+type UrlData struct {
+	ShortSlug string     `json:"short-slug" gorm:"column:short_slug; type:varchar(50); primary_key"`
+	RealUrl   string     `json:"real-url" gorm:"column:real_url; type:text"`
+	Expires   CustomTime `json:"expires" gorm:"embedded"`
 }
 
 // UnmarshalJSON overrides the base method to handle dd/mm/yyyy hh:mm
@@ -38,11 +45,4 @@ func (customTime *CustomTime) MarshalJSON() ([]byte, error) {
 	}
 
 	return timeAsJson, nil
-}
-
-// UrlData denotes the url data that is sent by the user.
-type UrlData struct {
-	ShortSlug string     `json:"short-slug" gorm:"column:short_slug; type:varchar(50); primary_key"`
-	RealUrl   string     `json:"real-url" gorm:"column:real_url; type:text"`
-	Expires   CustomTime `json:"expires" gorm:"embedded"`
 }
